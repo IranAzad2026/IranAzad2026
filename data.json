@@ -1,0 +1,46 @@
+
+
+[
+  {
+    "id": "1",
+    "status": "killed",
+    "name": "",
+    "age": "",
+    "date_of_death": "",
+    "location": "",
+    "images": [
+      "",
+      ""
+    ],
+    "story": "",
+    "details": ""
+  },
+    {
+    "id": "2",
+    "status": "killed",
+    "name": "",
+    "age": "",
+    "date_of_death": "",
+    "location": "",
+    "images": [
+      "",
+      ""
+    ],
+    "story": "",
+    "details": ""
+  },
+  {
+    "id": "3",
+    "status": "at_risk",
+    "name": "",
+    "age": "",
+    "date_of_death": "Pending Execution",
+    "location": "",
+    "images": [
+      "",
+      ""
+    ],
+    "story": "",
+    "details": ""
+  }
+]

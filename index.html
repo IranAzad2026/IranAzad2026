@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavidNam - Memorial</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Lora:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="ribbon-container">
+        <div class="ribbon"><span>Rest in Peace</span></div>
+    </div>
+
+    <div class="blood-bg" id="blood-bg"></div>
+
+    <header>
+        <h1>JavidNam</h1>
+        <p class="subtitle">"For those who stood for freedom"</p>
+    </header>
+
+    <div class="filter-nav">
+        <button class="filter-btn active" onclick="filterGallery('killed', this)">The Fallen</button>
+        <button class="filter-btn" onclick="filterGallery('at_risk', this)">At Risk of Execution</button>
+    </div>
+
+    <div class="container" id="gallery">
+        <p style="text-align:center; color:#555; margin-top:50px;">Loading stories...</p>
+    </div>
+
+    <footer>
+        <p>JavidNam Project - 2026</p>
+    </footer>
+
+    <script>
+        // Global variables
+        window.peopleData = [];
+        window.scrollIntervals = []; // To keep track of active scroll timers
+
+        // --- 1. RAIN OF BLOOD GENERATOR ---
+        function createBloodDrops() {
+            const bg = document.getElementById('blood-bg');
+            const dropCount = 50; 
+            for (let i = 0; i < dropCount; i++) {
+                let drop = document.createElement('div');
+                drop.classList.add('drop');
+                drop.style.left = Math.random() * 100 + 'vw';
+                drop.style.animationDuration = (Math.random() * 1.5 + 2) + 's'; 
+                drop.style.animationDelay = (Math.random() * 5) + 's';
+                drop.style.opacity = Math.random() * 0.5 + 0.3;
+                bg.appendChild(drop);
+            }
+        }
+        createBloodDrops();
+
+        // --- 2. LOAD DATA ---
+        async function loadData() {
+            try {
+                const response = await fetch('data.json');
+                window.peopleData = await response.json();
+                
+                // Initial Load: Show 'killed' by default
+                renderGallery('killed');
+
+            } catch (error) {
+                console.error('Error loading data:', error);
+                document.getElementById('gallery').innerHTML = '<p style="text-align:center; color:#800;">Error loading stories. Please run locally.</p>';
+            }
+        }
+
+        // --- 3. FILTER & RENDER LOGIC ---
+        function filterGallery(status, btnElement) {
+            // Update Active Button Visuals
+            if(btnElement) {
+                document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                btnElement.classList.add('active');
+            }
+
+            renderGallery(status);
+        }
+
+        function renderGallery(filterStatus) {
+            const gallery = document.getElementById('gallery');
+            
+            // Clear existing content AND existing scroll timers
+            gallery.innerHTML = '';
+            window.scrollIntervals.forEach(interval => clearInterval(interval));
+            window.scrollIntervals = []; // Reset array
+
+            // Filter data
+            // If status is 'killed', show killed. If 'at_risk', show at_risk.
+            const filteredData = window.peopleData.filter(person => person.status === filterStatus);
+
+            if (filteredData.length === 0) {
+                gallery.innerHTML = '<p style="text-align:center; color:#555; margin-top:50px;">No entries found for this category.</p>';
+                return;
+            }
+
+            filteredData.forEach(person => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                
+                let imagesHtml = '';
+                person.images.forEach(imgSrc => {
+                    imagesHtml += `<img src="${imgSrc}" alt="${person.name}" loading="lazy">`;
+                });
+
+                card.innerHTML = `
+                    <h2><a href="profile.html?id=${person.id}">${person.name}</a></h2>
+                    
+                    <div class="info-grid">
+                        <div><strong>Age</strong>${person.age}</div>
+                        <div><strong>Location</strong>${person.location}</div>
+                        <div><strong>Date/Status</strong>${person.date_of_death}</div>
+                    </div>
+
+                    <div class="image-scroll" id="scroll-${person.id}">
+                        ${imagesHtml}
+                    </div>
+                    
+                    <div class="btn-group">
+                        <a href="profile.html?id=${person.id}" class="btn btn-secondary">Read Story</a>
+                        <button class="btn btn-primary" onclick="generatePDF('${person.id}')">Print PDF</button>
+                    </div>
+                `;
+                
+                gallery.appendChild(card);
+                startAutoScroll(`scroll-${person.id}`);
+            });
+        }
+
+        // --- 4. AUTO SCROLL LOGIC ---
+        function startAutoScroll(elementId) {
+            const scrollContainer = document.getElementById(elementId);
+            
+            const intervalId = setInterval(() => {
+                if (!scrollContainer) return;
+                const currentScroll = scrollContainer.scrollLeft;
+                const maxScroll = scrollContainer.scrollWidth - scrollContainer.clientWidth;
+
+                if (currentScroll >= maxScroll - 20) {
+                    scrollContainer.scrollTo({ left: 0, behavior: 'smooth' });
+                } else {
+                    scrollContainer.scrollBy({ left: 300, behavior: 'smooth' });
+                }
+            }, 6000);
+
+            // Save interval ID so we can stop it later when switching tabs
+            window.scrollIntervals.push(intervalId);
+        }
+
+        // --- 5. PDF GENERATOR ---
+        function generatePDF(id) {
+            const person = window.peopleData.find(p => p.id === id);
+            if(!person) return;
+
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            doc.setFont("times", "bold");
+            doc.setFontSize(24);
+            doc.setTextColor(150, 0, 0); 
+            doc.text(person.name, 20, 20);
+
+            const profileUrl = window.location.origin + window.location.pathname.replace('index.html', '') + 'profile.html?id=' + id;
+            
+            const qrDiv = document.createElement('div');
+            const qrcode = new QRCode(qrDiv, { text: profileUrl, width: 100, height: 100 });
+            const qrDataUrl = qrDiv.querySelector('canvas').toDataURL("image/jpeg");
+            doc.addImage(qrDataUrl, 'JPEG', 150, 10, 40, 40);
+            
+            doc.setFontSize(10);
+            doc.setTextColor(0,0,0);
+            doc.text("Scan for full story", 150, 55);
+
+            const img = new Image();
+            img.src = person.images[0];
+            img.crossOrigin = "Anonymous";
+
+            img.onload = function() {
+                doc.addImage(img, 'JPEG', 20, 40, 100, 75);
+                doc.setFont("times", "normal");
+                doc.setFontSize(12);
+                doc.text(`Age: ${person.age}`, 20, 125);
+                doc.text(`Location: ${person.location}`, 20, 132);
+                doc.text(`Status: ${person.date_of_death}`, 20, 139);
+
+                const splitText = doc.splitTextToSize(person.story, 170);
+                doc.text(splitText, 20, 150);
+                
+                doc.save(`${person.name}_memorial.pdf`);
+            };
+
+            img.onerror = function() {
+                doc.text("(Image unavailable)", 20, 60);
+                doc.save(`${person.name}_memorial.pdf`);
+            };
+        }
+
+        loadData();
+    </script>
+</body>
+</html>

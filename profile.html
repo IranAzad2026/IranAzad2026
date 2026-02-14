@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memorial Profile</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+    <div class="ribbon-container">
+        <div class="ribbon"><span>Rest in Peace</span></div>
+    </div>
+    
+    <div class="blood-bg" id="blood-bg"></div>
+
+    <header>
+        <h1>JavidNam</h1>
+        <p class="subtitle"><a href="index.html" style="color:#888; text-decoration:none;">&larr; Return to Gallery</a></p>
+    </header>
+
+    <div class="container" id="profile-content">
+        <p style="text-align:center;">Loading profile...</p>
+    </div>
+
+    <script>
+        // 1. Get ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const personId = urlParams.get('id');
+
+        // 2. Load Data
+        async function loadProfile() {
+            try {
+                const response = await fetch('data.json');
+                const people = await response.json();
+                const person = people.find(p => p.id === personId);
+
+                if (!person) {
+                    document.getElementById('profile-content').innerHTML = '<h2 style="text-align:center">Profile not found.</h2>';
+                    return;
+                }
+
+                document.title = `${person.name} - JavidNam`;
+
+                // Build Images HTML
+                let imagesHtml = '';
+                person.images.forEach(img => {
+                    imagesHtml += `<img src="${img}" crossorigin="anonymous">`;
+                });
+
+                // Render Page
+                const container = document.getElementById('profile-content');
+                container.innerHTML = `
+                    <div class="card" style="border:none; background:transparent;">
+                        <h2 style="font-size: 3rem; margin-bottom: 20px; color:#fff; font-family:'Cinzel', serif;">${person.name}</h2>
+                        
+                        <div class="image-scroll" style="justify-content:center; flex-wrap:wrap;">
+                            ${imagesHtml}
+                        </div>
+
+                        <div class="story-box" style="font-size: 1.3rem; border-left: 4px solid #800000; padding-left: 20px; margin-top:40px;">
+                            ${person.story}
+                        </div>
+
+                        <div style="margin-top: 40px; padding: 20px; background: #111; border: 1px solid #333;">
+                            <h3 style="font-family:'Cinzel', serif; color:#888;">Details</h3>
+                            <p><strong>Age:</strong> ${person.age}</p>
+                            <p><strong>Location:</strong> ${person.location}</p>
+                            <p><strong>Date:</strong> ${person.date_of_death}</p>
+                            <hr style="border-color:#333; margin: 15px 0;">
+                            <p>${person.details}</p>
+                        </div>
+
+                        <div style="text-align:center; margin-top:50px;">
+                            <button class="print-btn" onclick="generatePDF()">Download Memorial PDF</button>
+                        </div>
+                    </div>
+                `;
+                
+                // Store person data globally for the PDF function
+                window.currentPerson = person;
+
+            } catch (error) {
+                console.error(error);
+            }
+        }
+        loadProfile();
+
+        // 3. PDF Generator (Specific for this page)
+        function generatePDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const person = window.currentPerson;
+
+            doc.setFont("times", "bold");
+            doc.setFontSize(24);
+            doc.setTextColor(150, 0, 0); 
+            doc.text(person.name, 20, 20);
+
+            // Generate QR Code that links to THIS page
+            const currentUrl = window.location.href; // This grabs the full URL with ?id=X
+            
+            const qrDiv = document.createElement('div');
+            const qrcode = new QRCode(qrDiv, { text: currentUrl, width: 100, height: 100 });
+            const qrDataUrl = qrDiv.querySelector('canvas').toDataURL("image/jpeg");
+            
+            doc.addImage(qrDataUrl, 'JPEG', 150, 10, 40, 40);
+            
+            doc.setFontSize(10);
+            doc.setTextColor(0,0,0);
+            doc.text("Scan to view full story", 150, 55);
+
+            // Add Image
+            const img = new Image();
+            img.src = person.images[0];
+            img.crossOrigin = "Anonymous";
+            img.onload = function() {
+                doc.addImage(img, 'JPEG', 20, 40, 100, 75);
+                doc.setFont("times", "normal");
+                doc.setFontSize(12);
+                const splitText = doc.splitTextToSize(person.story, 170);
+                doc.text(splitText, 20, 130);
+                doc.save(`${person.name}_memorial.pdf`);
+            }
+        }
+    </script>
+</body>
+</html>
